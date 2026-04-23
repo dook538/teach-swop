@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import { THAILAND_LOCATIONS } from './data/thailand-data';
 
 const API_URL = "https://script.google.com/macros/s/AKfycbweTpu_NULvdV3aK8ZeKc9cLOkKD_1HpfObH6ki9w7k4vfwVH4phghlaOizZnNa-301Qw/exec";
 
@@ -20,9 +21,10 @@ function App() {
     contact: ''
   });
 
+  const provinces = Object.keys(THAILAND_LOCATIONS).sort();
+
   useEffect(() => {
     fetchData();
-    // Check local storage for existing session
     const savedUser = localStorage.getItem('teach_swap_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -55,7 +57,6 @@ function App() {
     e.preventDefault();
     setLoading(true);
     try {
-      // Send data to Google Sheets
       const payload = {
         ...formData,
         name: user?.name || formData.name,
@@ -65,7 +66,7 @@ function App() {
       
       await fetch(API_URL, {
         method: 'POST',
-        mode: 'no-cors', // Apps Script often requires no-cors for POST
+        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -99,27 +100,29 @@ function App() {
           <div className="card">
             <h2>🔎 รายการแจ้งความประสงค์</h2>
             {loading ? <p>กำลังโหลดข้อมูล...</p> : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>วิชาเอก</th>
-                    <th>ต้นสังกัดปัจจุบัน</th>
-                    <th>ต้องการย้ายไป</th>
-                    <th>ผู้แจ้ง / ติดต่อ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((item, index) => (
-                    <tr key={index}>
-                      <td><span className="badge">{item.Major}</span></td>
-                      <td>{item.CurrentDistrict}, {item.CurrentProvince}</td>
-                      <td><span className="target-text">→ {item.TargetDistrict}, {item.TargetProvince}</span></td>
-                      <td>{item.Name} <br/><small>{item.Contact}</small></td>
+              <div style={{overflowX: 'auto'}}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>วิชาเอก</th>
+                      <th>ต้นสังกัดปัจจุบัน</th>
+                      <th>ต้องการย้ายไป</th>
+                      <th>ผู้แจ้ง / ติดต่อ</th>
                     </tr>
-                  ))}
-                  {data.length === 0 && !loading && <tr><td colSpan={4} style={{textAlign:'center'}}>ยังไม่มีข้อมูลในระบบ</td></tr>}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.map((item, index) => (
+                      <tr key={index}>
+                        <td><span className="badge">{item.Major}</span></td>
+                        <td>{item.CurrentDistrict}, {item.CurrentProvince}</td>
+                        <td><span className="target-text">→ {item.TargetDistrict}, {item.TargetProvince}</span></td>
+                        <td>{item.Name} <br/><small>{item.Contact}</small></td>
+                      </tr>
+                    ))}
+                    {data.length === 0 && !loading && <tr><td colSpan={4} style={{textAlign:'center'}}>ยังไม่มีข้อมูลในระบบ</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -150,28 +153,47 @@ function App() {
             <h2>📍 ระบุพื้นที่ที่ต้องการย้าย</h2>
             <p>สวัสดีคุณครู <strong>{user?.name}</strong> ยินดีต้อนรับสู่ระบบครับ</p>
             <form onSubmit={handleSubmitRequest}>
+              <h3>สังกัดปัจจุบัน</h3>
               <div className="row">
                 <div className="form-group">
                   <label>จังหวัดปัจจุบัน</label>
-                  <input type="text" required onChange={(e) => setFormData({...formData, currentProvince: e.target.value})} />
+                  <select required value={formData.currentProvince} onChange={(e) => setFormData({...formData, currentProvince: e.target.value, currentDistrict: ''})}>
+                    <option value="">-- เลือกจังหวัด --</option>
+                    {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>อำเภอปัจจุบัน</label>
-                  <input type="text" required onChange={(e) => setFormData({...formData, currentDistrict: e.target.value})} />
+                  <select required value={formData.currentDistrict} onChange={(e) => setFormData({...formData, currentDistrict: e.target.value})} disabled={!formData.currentProvince}>
+                    <option value="">-- เลือกอำเภอ --</option>
+                    {formData.currentProvince && (THAILAND_LOCATIONS as any)[formData.currentProvince].map((d: string) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+
+              <h3>เป้าหมายที่ต้องการย้ายไป</h3>
               <div className="row">
                 <div className="form-group">
                   <label>จังหวัดเป้าหมาย</label>
-                  <input type="text" required onChange={(e) => setFormData({...formData, targetProvince: e.target.value})} />
+                  <select required value={formData.targetProvince} onChange={(e) => setFormData({...formData, targetProvince: e.target.value, targetDistrict: ''})}>
+                    <option value="">-- เลือกจังหวัด --</option>
+                    {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>อำเภอเป้าหมาย</label>
-                  <input type="text" required onChange={(e) => setFormData({...formData, targetDistrict: e.target.value})} />
+                  <select required value={formData.targetDistrict} onChange={(e) => setFormData({...formData, targetDistrict: e.target.value})} disabled={!formData.targetProvince}>
+                    <option value="">-- เลือกอำเภอ --</option>
+                    {formData.targetProvince && (THAILAND_LOCATIONS as any)[formData.targetProvince].map((d: string) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="btn-submit">
-                {loading ? 'กำลังบันทึก...' : 'ส่งข้อมูลความประสงค์'}
+              <button type="submit" disabled={loading} className="btn-submit" style={{marginTop: '20px'}}>
+                {loading ? 'กำลังบันทึก...' : 'ส่งข้อมูลความประสงค์ย้าย'}
               </button>
             </form>
           </div>
